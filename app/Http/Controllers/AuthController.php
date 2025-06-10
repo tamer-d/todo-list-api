@@ -45,11 +45,12 @@ class AuthController extends Controller
             'password' => ['required'],
         ]);
 
-        if (!Auth::attempt($request->only('email', 'password'))) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
-            ]);
+         if (!Auth::attempt($request->only('email', 'password'))) {
+            return response()->json([
+            'message' => 'The provided credentials are incorrect.'
+                ], 401);
         }
+
 
         $user = $request->user();
         $token = $user->createToken('auth_token')->plainTextToken;

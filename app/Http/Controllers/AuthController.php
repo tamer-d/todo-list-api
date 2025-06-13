@@ -6,19 +6,20 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    /**
-     * Register a new user.
-     */
+    public function __construct()
+    {
+        $this->middleware('auth:api', ['except' => ['login', 'register']]);
+    }
+
     public function register(Request $request)
     {
         $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['required', 'string', 'min:8'],
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'password' => 'required|string|min:8',
         ]);
 
         $user = User::create([
@@ -27,49 +28,44 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+        $token = Auth::guard('api')->login($user);
 
         return response()->json([
-            'message' => 'User registered successfully.',
-            'token' => $token
-        ], 201);
+            'message' => 'User registered successfully',
+            'access_token' => $token,
+            'token_type' => 'bearer',
+            'expires_in' => auth('api')->factory()->getTTL() * 60
+        ]);
     }
 
-    /**
-     * Log in an existing user.
-     */
     public function login(Request $request)
     {
         $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required'],
+            'email' => 'required|string|email',
+            'password' => 'required|string',
         ]);
 
-         if (!Auth::attempt($request->only('email', 'password'))) {
-            return response()->json([
-            'message' => 'The provided credentials are incorrect.'
-                ], 401);
+        $credentials = $request->only('email', 'password');
+
+        if (!$token = Auth::guard('api')->attempt($credentials)) {
+            return response()->json(['message' => 'Unauthorized'], 401);
         }
 
-
-        $user = $request->user();
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'message' => 'Login successful.',
-            'token' => $token
-        ]);
+        return $this->respondWithToken($token);
     }
 
-    /**
-     * Log out the current user.
-     */
-    public function logout(Request $request)
+    public function logout()
     {
-        $request->user()->currentAccessToken()->delete();
+        Auth::guard('api')->logout();
+        return response()->json(['message' => 'Successfully logged out']);
+    }
 
+    protected function respondWithToken($token)
+    {
         return response()->json([
-            'message' => 'Logged out successfully.'
+            'access_token' => $token,
+            'token_type' => 'bearer',
+            'expires_in' => auth('api')->factory()->getTTL() * 60
         ]);
     }
 }

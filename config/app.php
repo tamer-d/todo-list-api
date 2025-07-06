@@ -28,6 +28,18 @@ return [
 
     'env' => env('APP_ENV', 'production'),
 
+    'providers' => [
+        // ... autres providers
+        
+        /*
+         * Application Service Providers...
+         */
+        App\Providers\AppServiceProvider::class,
+        App\Providers\AuthServiceProvider::class,
+        App\Providers\RouteServiceProvider::class,
+
+    ],
+    
     /*
     |--------------------------------------------------------------------------
     | Application Debug Mode
